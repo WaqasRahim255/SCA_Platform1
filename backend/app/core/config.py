@@ -1,5 +1,6 @@
 from functools import cached_property
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,7 +9,7 @@ class Settings(BaseSettings):
 
     # PostgreSQL
     database_url: str = (
-        "postgresql+psycopg2://sca:sca_password@localhost:5432/sca_platform"
+        "postgresql+psycopg://sca:sca_password@localhost:5432/sca_platform"
     )
 
     # Redis
@@ -35,6 +36,23 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8"
     )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
+
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+psycopg://", 1)
+
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+
+        if value.startswith("postgresql+psycopg2://"):
+            return value.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+
+        return value
 
     @cached_property
     def cors_origins(self) -> list[str]:
